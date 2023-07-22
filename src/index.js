@@ -19,21 +19,17 @@ async function onFormSubmit(event) {
   searchService.resetPage();
   galleryEl.innerHTML = '';
   try {
-    const data = await onGetData();
+    const data = await searchService.onFetch();
     onCardRender(data);
   } catch {
-    onError();
+    searchService.error();
   }
-}
-
-function onGetData() {
-  return searchService.onFetch();
 }
 
 function onCardRender(data) {
   if (data.data.totalHits === 0) {
     loadMoreBtn.classList.add('visually-hidden');
-    return onError();
+    return searchService.error();
   }
   const markup = data.data.hits
     .map(element => {
@@ -64,22 +60,23 @@ function onCardRender(data) {
   loadMoreBtn.classList.remove('visually-hidden');
 }
 
-function onLoadMore() {
-  searchService
-    .onFetch()
-    .then(onCardRender)
-    .catch(() => {
+async function onLoadMore() {
+  try {
+    const data = await searchService.onFetch();
+    onCardRender(data);
+    if (
+      data.data.hits.length < searchService.pagesAmount ||
+      (searchService.page - 1) * searchService.pagesAmount > data.data.totalHits
+    ) {
       loadMoreBtn.classList.add('visually-hidden');
       Notify.failure(
         "We're sorry, but you've reached the end of search results."
       );
-    });
-}
-
-function onError() {
-  Notify.failure(
-    'Sorry, there are no images matching your search query. Please try again.'
-  );
+    }
+  } catch {
+    loadMoreBtn.classList.add('visually-hidden');
+    searchService.error();
+  }
 }
 
 function onGalleryContainerClick(event) {
